@@ -1,1 +1,2 @@
+rootProject.name='RecyclerTreeView'
 include ':app', ':recyclertreeview-lib'

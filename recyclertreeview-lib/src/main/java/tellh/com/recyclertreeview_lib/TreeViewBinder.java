@@ -1,8 +1,9 @@
 package tellh.com.recyclertreeview_lib;
 
-import android.support.annotation.IdRes;
-import android.support.v7.widget.RecyclerView;
 import android.view.View;
+
+import androidx.annotation.IdRes;
+import androidx.recyclerview.widget.RecyclerView;
 
 
 public abstract class TreeViewBinder<VH extends RecyclerView.ViewHolder> implements LayoutItemType {
