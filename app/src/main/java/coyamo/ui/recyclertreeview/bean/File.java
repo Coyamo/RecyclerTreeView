@@ -9,9 +9,11 @@ import tellh.com.recyclertreeview_lib.LayoutItemType;
 
 public class File implements LayoutItemType {
     public String fileName;
+    public String path;
 
-    public File(String fileName) {
+    public File(String fileName, String path) {
         this.fileName = fileName;
+        this.path = path;
     }
 
     @Override

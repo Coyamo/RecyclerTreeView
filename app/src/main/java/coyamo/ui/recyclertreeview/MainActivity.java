@@ -1,22 +1,30 @@
 package coyamo.ui.recyclertreeview;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ImageView;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import coyamo.ui.recyclertreeview.bean.Dir;
 import coyamo.ui.recyclertreeview.bean.File;
 import coyamo.ui.recyclertreeview.viewbinder.DirectoryNodeBinder;
 import coyamo.ui.recyclertreeview.viewbinder.FileNodeBinder;
+import tellh.com.recyclertreeview_lib.LayoutItemType;
 import tellh.com.recyclertreeview_lib.TreeNode;
 import tellh.com.recyclertreeview_lib.TreeViewAdapter;
 
@@ -30,44 +38,64 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        initView();
-        initData();
+
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+        }
+
+
     }
 
-    private void initData() {
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode) {
+            case 1:
+                for (int result : grantResults) {
+                    if (result != PackageManager.PERMISSION_GRANTED) {
+                        Toast.makeText(MainActivity.this, "请求文件读写权限被拒绝！", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                }
+                initView();
+                initFiles();
+                break;
+        }
+    }
+
+    private void sort(List<java.io.File> list) {
+        Collections.sort(list);
+    }
+
+    private void addChild(TreeNode parent, List<java.io.File> files) {
+        sort(files);
+        for (java.io.File f : files) {
+            if (f.isDirectory()) {
+                TreeNode<Dir> dir = new TreeNode<>(new Dir(f.getName(), f.getAbsolutePath()));
+                parent.addChild(dir);
+            } else {
+                TreeNode<File> file = new TreeNode<>(new File(f.getName(), f.getAbsolutePath()));
+                parent.addChild(file);
+            }
+        }
+    }
+
+    private void initFiles() {
         List<TreeNode> nodes = new ArrayList<>();
-        TreeNode<Dir> app = new TreeNode<>(new Dir("app"));
-        nodes.add(app);
-        app.addChild(
-                new TreeNode<>(new Dir("manifests"))
-                        .addChild(new TreeNode<>(new File("AndroidManifest.xml")))
-        );
-        app.addChild(
-                new TreeNode<>(new Dir("java")).addChild(
-                        new TreeNode<>(new Dir("tellh")).addChild(
-                                new TreeNode<>(new Dir("com")).addChild(
-                                        new TreeNode<>(new Dir("recyclertreeview"))
-                                                .addChild(new TreeNode<>(new File("Dir")))
-                                                .addChild(new TreeNode<>(new File("DirectoryNodeBinder")))
-                                                .addChild(new TreeNode<>(new File("File")))
-                                                .addChild(new TreeNode<>(new File("FileNodeBinder")))
-                                                .addChild(new TreeNode<>(new File("TreeViewBinder")))
-                                )
-                        )
-                )
-        );
-        TreeNode<Dir> res = new TreeNode<>(new Dir("res"));
-        nodes.add(res);
-        res.addChild(
-                new TreeNode<>(new Dir("layout")).lock() // lock this TreeNode
-                        .addChild(new TreeNode<>(new File("activity_main.xml")))
-                        .addChild(new TreeNode<>(new File("item_dir.xml")))
-                        .addChild(new TreeNode<>(new File("item_file.xml")))
-        );
-        res.addChild(
-                new TreeNode<>(new Dir("mipmap"))
-                        .addChild(new TreeNode<>(new File("ic_launcher.png")))
-        );
+        List<java.io.File> files = Arrays.asList(Environment.getExternalStorageDirectory().listFiles());
+        sort(files);
+        for (java.io.File f : files) {
+            if (f.isDirectory()) {
+                TreeNode file = new TreeNode(new Dir(f.getName(), f.getAbsolutePath()));
+                addChild(file, Arrays.asList(f.listFiles()));
+                nodes.add(file);
+            } else {
+                TreeNode file = new TreeNode(new File(f.getName(), f.getAbsolutePath()));
+                nodes.add(file);
+            }
+
+        }
 
         rv.setLayoutManager(new LinearLayoutManager(this));
         adapter = new TreeViewAdapter(nodes, Arrays.asList(new FileNodeBinder(), new DirectoryNodeBinder()));
@@ -76,12 +104,24 @@ public class MainActivity extends AppCompatActivity {
         adapter.setOnTreeNodeListener(new TreeViewAdapter.OnTreeNodeListener() {
             @Override
             public boolean onClick(TreeNode node, RecyclerView.ViewHolder holder) {
-                if (!node.isLeaf()) {
-                    //Update and toggle the node.
-                    onToggle(!node.isExpand(), holder);
-//                    if (!node.isExpand())
-//                        adapter.collapseBrotherNode(node);
+
+                List<TreeNode> childs = node.getChildList();
+                LayoutItemType type = node.getContent();
+
+                if (!node.isExpand()) {
+                    if (type instanceof Dir) {
+                        //如果有新文件添加 这样可以就可以加载出来 而不是使用上一次的记录
+                        //缺点 内部打开过的节点会是关闭状态.
+                        childs.clear();
+                        java.io.File f = new java.io.File(((Dir) type).path);
+                        List<java.io.File> list = Arrays.asList(f.listFiles());
+                        addChild(node, list);
+                    }
                 }
+                if (type instanceof Dir) {
+                    onToggle(!node.isExpand(), holder);
+                }
+
                 return false;
             }
 

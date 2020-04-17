@@ -4,6 +4,8 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import java.io.File;
+
 import coyamo.ui.recyclertreeview.R;
 import coyamo.ui.recyclertreeview.bean.Dir;
 import tellh.com.recyclertreeview_lib.TreeNode;
@@ -28,7 +30,7 @@ public class DirectoryNodeBinder extends TreeViewBinder<DirectoryNodeBinder.View
         holder.ivArrow.setRotation(rotateDegree);
         Dir dirNode = (Dir) node.getContent();
         holder.tvName.setText(dirNode.dirName);
-        if (node.isLeaf())
+        if (new File(dirNode.path).listFiles().length == 0)
             holder.ivArrow.setVisibility(View.INVISIBLE);
         else holder.ivArrow.setVisibility(View.VISIBLE);
     }
